@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background-color:#f5f7fa;">
+<!-- ============================================================
+     每日热点速览 · 公众号模板（单一事实源）
+     占位符：{{DATE_LINE}} {{GUIDE}} {{DOMESTIC}} {{INTL}}
+     可重复区块：DOM_ITEM / INTL_ITEM（文件末尾定义，渲染时不会出现在成品里）
+     样式全部内联，兼容 iOS 大字号与旧版 WebView：
+       - 表格布局 + em 相对单位（字号放大时不错位）
+       - 每个 td 显式 border:none（微信会给表格画边框）
+       - 渐变前有纯色兜底，并带 -webkit- 前缀
+     ============================================================ -->
+<section style="max-width:677px;margin:0 auto;padding:16px 12px;background-color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;font-size:15px;color:#2b2b2b;line-height:1.8;-webkit-text-size-adjust:100%;">
+
+  <!-- 头部横幅 -->
+  <section style="background-color:#1e3a8a;background-image:-webkit-linear-gradient(135deg,#1e3a8a,#2563eb);background-image:linear-gradient(135deg,#1e3a8a,#2563eb);border-radius:14px;-webkit-border-radius:14px;padding:26px 16px 22px;text-align:center;">
+    <p style="margin:0;color:#adc8ff;font-size:0.8em;letter-spacing:4px;line-height:1.6;">DAILY BRIEFING</p>
+    <p style="margin:8px 0 0;font-size:1.7em;font-weight:bold;color:#ffffff;letter-spacing:2px;line-height:1.4;">每日热点速览</p>
+    <p style="margin:10px 0 0;color:#dbe7ff;font-size:0.85em;line-height:1.6;">{{DATE_LINE}}</p>
+  </section>
+
+  <!-- 今日导读 -->
+  <section style="margin:18px 0 0;background-color:#eef4ff;border-radius:10px;-webkit-border-radius:10px;padding:14px 16px;">
+    <p style="margin:0 0 6px;font-size:0.86em;font-weight:bold;color:#2563eb;line-height:1.6;">今日导读</p>
+    <p style="margin:0;font-size:0.86em;color:#3b4a63;line-height:2;">{{GUIDE}}</p>
+  </section>
+
+  <!-- 国内热点 -->
+  <section style="margin:28px 0 0;">
+    <table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;border:none;margin:0;">
+      <tr><td style="border:none;padding:0;">
+        <span style="display:inline-block;background-color:#2563eb;color:#ffffff;font-size:0.95em;font-weight:bold;padding:0.3em 1em;border-radius:1em;-webkit-border-radius:1em;letter-spacing:2px;">国内热点</span>
+      </td></tr>
+    </table>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;border:none;margin-top:6px;">
+      <tr><td style="border:none;border-top:2px solid #e8eefc;border-left:none;border-right:none;border-bottom:none;font-size:0;line-height:0;height:0;padding:0;">&nbsp;</td></tr>
+    </table>
+    {{DOMESTIC}}
+  </section>
+
+  <!-- 国际热点 -->
+  <section style="margin:28px 0 0;">
+    <table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;border:none;margin:0;">
+      <tr><td style="border:none;padding:0;">
+        <span style="display:inline-block;background-color:#ea580c;color:#ffffff;font-size:0.95em;font-weight:bold;padding:0.3em 1em;border-radius:1em;-webkit-border-radius:1em;letter-spacing:2px;">国际热点</span>
+      </td></tr>
+    </table>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;border:none;margin-top:6px;">
+      <tr><td style="border:none;border-top:2px solid #fdeee2;border-left:none;border-right:none;border-bottom:none;font-size:0;line-height:0;height:0;padding:0;">&nbsp;</td></tr>
+    </table>
+    {{INTL}}
+  </section>
+
+  <!-- 结尾 -->
+  <section style="margin:28px 0 0;background-color:#f4f6f9;border-radius:10px;-webkit-border-radius:10px;padding:16px;text-align:center;">
+    <p style="margin:0;font-size:0.86em;color:#6b7280;line-height:1.9;">每天早上 8:00 准时更新，国内外热点一网打尽<br>觉得有用，欢迎点赞、在看、转发给你的朋友</p>
+  </section>
+  <p style="margin:14px 0 0;font-size:0.75em;color:#c0c5d0;text-align:center;line-height:1.6;">信息来源为公开网络报道，仅供参考</p>
+
+</section>
+
+<!-- ============ 可重复区块定义（渲染时提取，不出现在成品中） ============ -->
+<!-- DOM_ITEM_START -->
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;border:none;margin:18px 0 0;">
+  <tr>
+    <td width="26" style="border:none;width:1.7em;vertical-align:top;padding:2px 8px 0 0;">
+      <span style="display:inline-block;width:1.45em;height:1.45em;line-height:1.45em;text-align:center;background-color:#2563eb;color:#ffffff;border-radius:50%;-webkit-border-radius:50%;font-size:0.82em;font-weight:bold;">{{IDX}}</span>
+    </td>
+    <td style="border:none;vertical-align:top;padding:0;">
+      <p style="margin:0;font-size:1.06em;font-weight:bold;color:#1f2937;line-height:1.55;">{{TITLE}}</p>
+      <p style="margin:6px 0 0;font-size:0.95em;color:#4b5563;line-height:1.85;">{{SUMMARY}}</p>
+      <p style="margin:5px 0 0;font-size:0.8em;color:#9aa3b2;line-height:1.6;">来源：{{SOURCE}}</p>
+    </td>
+  </tr>
+</table>
+<!-- DOM_ITEM_END -->
+
+<!-- INTL_ITEM_START -->
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;border:none;margin:18px 0 0;">
+  <tr>
+    <td width="26" style="border:none;width:1.7em;vertical-align:top;padding:2px 8px 0 0;">
+      <span style="display:inline-block;width:1.45em;height:1.45em;line-height:1.45em;text-align:center;background-color:#ea580c;color:#ffffff;border-radius:50%;-webkit-border-radius:50%;font-size:0.82em;font-weight:bold;">{{IDX}}</span>
+    </td>
+    <td style="border:none;vertical-align:top;padding:0;">
+      <p style="margin:0;font-size:1.06em;font-weight:bold;color:#1f2937;line-height:1.55;">{{TITLE}}</p>
+      <p style="margin:6px 0 0;font-size:0.95em;color:#4b5563;line-height:1.85;">{{SUMMARY}}</p>
+      <p style="margin:5px 0 0;font-size:0.8em;color:#9aa3b2;line-height:1.6;">来源：{{SOURCE}}</p>
+    </td>
+  </tr>
+</table>
+<!-- INTL_ITEM_END -->

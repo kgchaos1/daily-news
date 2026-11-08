@@ -18,6 +18,7 @@
     ]
   },
   "max_age_hours": 48,
+  "template": "page-template.html",
   "feeds": {
     "domestic": [
       {

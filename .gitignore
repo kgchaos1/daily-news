@@ -10,8 +10,7 @@ cloud/out/
 cloud/logs/
 cloud/preview-*.html
 news/*.html
-!news/TEMPLATE.html
-!news/TEMPLATE_V2.html
+!news/page-template.html
 
 # ---- 缓存与临时 ----
 **/__pycache__/

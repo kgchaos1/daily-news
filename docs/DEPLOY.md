@@ -16,7 +16,8 @@
 ```bash
 # 1. 建目录并放文件
 mkdir -p /opt/daily-news/{out,logs}
-# 把 news_bot.py、cover.jpg 上传到 /opt/daily-news/
+# 把 news_bot.py、page-template.html、cover.jpg 上传到 /opt/daily-news/
+# 注意：page-template.html 必须与 news_bot.py 同目录；缺失时脚本会回退内置版式（样式会变旧）
 
 # 2. 生成配置（照 config.example.json 填真实值）
 cp config.example.json /opt/daily-news/config.json

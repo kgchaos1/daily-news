@@ -330,7 +330,7 @@ def merge_fill(picked, pool, need, default_source):
     return out
 
 
-def render(date_str, weekday, issue, guide, domestic, intl):
+def render_builtin(date_str, weekday, issue, guide, domestic, intl):
     GRAD = ("background-color:#1e3a8a;"
             "background-image:-webkit-linear-gradient(135deg,#1e3a8a,#2563eb);"
             "background-image:linear-gradient(135deg,#1e3a8a,#2563eb);")
@@ -403,6 +403,65 @@ def render(date_str, weekday, issue, guide, domestic, intl):
         '信息来源为公开网络报道，仅供参考</p>'
         '</section></body></html>'
     )
+
+
+def load_template(cfg):
+    """读取模板文件；缺失时返回 None（走内置版式兜底）"""
+    rel = cfg.get("template", "page-template.html")
+    path = rel if os.path.isabs(rel) else os.path.join(HERE, rel)
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    log("模板文件不存在：%s，改用内置版式" % path)
+    return None
+
+
+def extract_block(tpl, name):
+    """提取 <!-- NAME_START --> ... <!-- NAME_END --> 之间的可重复区块"""
+    m = re.search(r"<!--\s*%s_START\s*-->([\s\S]*?)<!--\s*%s_END\s*-->" % (name, name), tpl)
+    if not m:
+        raise ValueError("模板缺少区块标记：%s_START/END" % name)
+    return m.group(1)
+
+
+def fill_item(block, idx, d):
+    return (block.replace("{{IDX}}", str(idx))
+                 .replace("{{TITLE}}", esc(d.get("title", "")))
+                 .replace("{{SUMMARY}}", esc(d.get("summary", "")))
+                 .replace("{{SOURCE}}", esc(d.get("source", ""))))
+
+
+def render(cfg, date_line, guide, domestic, intl):
+    """优先用模板文件渲染（单一事实源）；模板缺失时回退内置版式"""
+    tpl = load_template(cfg)
+    if not tpl:
+        parts = date_line.split(" · ")
+        date_str = parts[0] if parts else date_line
+        weekday = parts[1] if len(parts) > 1 else ""
+        issue = 1
+        m = re.search(r"第\s*(\d+)\s*期", date_line)
+        if m:
+            issue = int(m.group(1))
+        return render_builtin(date_str, weekday, issue, guide, domestic, intl)
+
+    dom_block = extract_block(tpl, "DOM_ITEM")
+    intl_block = extract_block(tpl, "INTL_ITEM")
+    dom_html = "".join(fill_item(dom_block, i + 1, d) for i, d in enumerate(domestic))
+    # 国际条目序号接着国内往下排，条数变化也不会错号
+    intl_html = "".join(fill_item(intl_block, len(domestic) + i + 1, d)
+                        for i, d in enumerate(intl))
+    guide_html = "<br>".join("%s %s" % ("①②③④⑤⑥"[i], esc(g)) for i, g in enumerate(guide[:6]))
+
+    page = re.sub(r"<!--\s*(DOM|INTL)_ITEM_START\s*-->[\s\S]*?<!--\s*\1_ITEM_END\s*-->", "", tpl)
+    page = (page.replace("{{DATE_LINE}}", esc(date_line))
+                .replace("{{GUIDE}}", guide_html)
+                .replace("{{DOMESTIC}}", dom_html)
+                .replace("{{INTL}}", intl_html))
+    left = re.findall(r"\{\{[A-Z_]+\}\}", page)
+    if left:
+        log("警告：模板仍有未替换占位符 %s" % sorted(set(left)))
+    log("使用模板渲染：%s" % cfg.get("template", "page-template.html"))
+    return page
 
 
 def wx_token(cfg):
@@ -494,7 +553,8 @@ def main():
     weekday = "周" + "一二三四五六日"[now.weekday()]
     issue = (now.date() - datetime.date(2026, 11, 5)).days + 1
     cn_date = "%d年%d月%d日" % (now.year, now.month, now.day)
-    html = render(cn_date, weekday, issue, guide, dom, itl)
+    date_line = "%s · %s · 第 %d 期" % (cn_date, weekday, issue)
+    html = render(cfg, date_line, guide, dom, itl)
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html)
     log("HTML 已生成：%s（%d 字符）" % (html_path, len(html)))

@@ -32,8 +32,7 @@ weixin/
   publish_draft.py     本地建草稿脚本（支持 --publish 调发布接口）
   cover.jpg            公众号封面（900×383）
 news/
-  TEMPLATE.html        20 条版式（第一版，固定 px）
-  TEMPLATE_V2.html     跨端兼容版式（表格布局 + em 单位，推荐）
+  page-template.html   文章版式（唯一事实源：改样式只改这个文件）
 avatars/
   方案1_极简报纸环.png 等 4 款圆形头像
 docs/
@@ -43,12 +42,34 @@ scripts/
   setup-git-proxy.sh   新仓库一键写入代理/身份配置
 ```
 
+## 改样式怎么改
+
+`news/page-template.html` 是**唯一事实源**，`news_bot.py` 只是往里填内容：
+
+| 占位符 | 含义 |
+|---|---|
+| `{{DATE_LINE}}` | 日期行，如 `2026年11月9日 · 星期一 · 第 4 期` |
+| `{{GUIDE}}` | 今日导读（6 条，`<br>` 分隔） |
+| `{{DOMESTIC}}` | 国内 12 条展开后的 HTML |
+| `{{INTL}}` | 国际 8 条展开后的 HTML |
+
+单条新闻的版式由文件末尾的 `<!-- DOM_ITEM_START -->…<!-- DOM_ITEM_END -->` 与
+`<!-- INTL_ITEM_START -->…<!-- INTL_ITEM_END -->` 两块定义，块内可用
+`{{IDX}}` `{{TITLE}}` `{{SUMMARY}}` `{{SOURCE}}`。这两块只在渲染时被提取，不会出现在成品里。
+
+改完样式：
+```bash
+scp news/page-template.html root@8.133.220.164:/opt/daily-news/   # 云端 8:00 自动生效
+python3 cloud/news_bot.py --dry-run --force                       # 本地先看效果
+```
+若服务器上找不到模板文件，`news_bot.py` 会自动回退到内置版式（`render_builtin`），不会出空白稿。
+
 ## 部署
 
 ```bash
 # 1. 服务器准备
 mkdir -p /opt/daily-news/{out,logs}
-cp news_bot.py config.json cover.jpg /opt/daily-news/
+cp news_bot.py config.json cover.jpg page-template.html /opt/daily-news/
 chmod 600 /opt/daily-news/config.json
 
 # 2. 填写 config.json：appid / secret / llm.api_key
