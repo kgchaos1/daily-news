@@ -1,0 +1,30 @@
+{
+  "appid": "wxXXXXXXXXXXXXXXXX",
+  "secret": "YOUR_APPSECRET_HERE",
+  "wechat": {
+    "author": "每日热点速览",
+    "cover": "cover.jpg"
+  },
+  "llm": {
+    "enabled": true,
+    "base_url": "https://tokenhub.tencentmaas.com/v1",
+    "api_key": "YOUR_API_KEY_HERE",
+    "model": "deepseek/deepseek-flash",
+    "model_chain": [
+      "deepseek/deepseek-flash",
+      "kimi-k3.1-pro-highspeed",
+      "mimo-v2.6-flash",
+      "hy4"
+    ]
+  },
+  "max_age_hours": 48,
+  "feeds": {
+    "domestic": [
+      {"name": "中国新闻网", "url": "https://www.chinanews.com.cn/rss/scroll-news.xml"},
+      {"name": "界面新闻", "url": "https://a.jiemian.com/index.php?m=article&a=rss"}
+    ],
+    "intl": [
+      {"name": "中国新闻网", "url": "https://www.chinanews.com.cn/rss/world.xml"}
+    ]
+  }
+}

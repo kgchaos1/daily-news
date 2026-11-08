@@ -1,0 +1,23 @@
+# ---- 密钥与凭据（绝不入库） ----
+weixin/config.json
+cloud/config.json
+*.secret.json
+.env
+server_info.txt
+
+# ---- 运行产物 ----
+cloud/out/
+cloud/logs/
+cloud/preview-*.html
+news/*.html
+!news/TEMPLATE.html
+!news/TEMPLATE_V2.html
+
+# ---- 缓存与临时 ----
+**/__pycache__/
+*.pyc
+*.log
+.DS_Store
+
+# ---- WorkBuddy 工作区数据 ----
+.workbuddy/
