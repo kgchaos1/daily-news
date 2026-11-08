@@ -21,3 +21,4 @@ news/*.html
 
 # ---- WorkBuddy 工作区数据 ----
 .workbuddy/
+_scratch/

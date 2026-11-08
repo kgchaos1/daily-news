@@ -238,10 +238,10 @@ def call_llm(cfg, domestic, intl):
         if not m:
             dbg = "/tmp/llm_raw_%s.txt" % model_name.replace("/", "_")
             with open(dbg, "w", encoding="utf-8") as df:
-                df.write(text[:5000])
+                df.write(text[:6000])
             raise ValueError("输出中找不到 JSON（已存 %s，开头：%s）"
                              % (dbg, text[:150].replace("\n", " ")))
-        data = json.loads(m.group(0))
+        data = parse_json_loose(m.group(0))
         if len(data.get("domestic", [])) < 6 or len(data.get("intl", [])) < 4:
             raise ValueError("返回条目不足（国内 %d / 国际 %d）"
                              % (len(data.get("domestic", [])), len(data.get("intl", []))))
@@ -284,6 +284,27 @@ def fallback(items, n, source_default):
         out.append({"title": title, "summary": desc,
                     "source": it.get("source") or source_default})
     return out
+
+
+def parse_json_loose(raw):
+    """容错解析：模型输出被截断时，补齐未闭合的括号与引号后再试"""
+    try:
+        return json.loads(raw)
+    except Exception:
+        pass
+    text = raw.rstrip()
+    # 去掉末尾残缺的对象/数组片段
+    for cut in range(len(text), max(len(text) - 400, 0), -1):
+        frag = text[:cut]
+        fixed = frag + ("]" if frag.count("[") > frag.count("]") else "") + ("}" if frag.count("{") > frag.count("}") else "")
+        fixed = fixed.replace(",]", "]").replace(",}", "}")
+        try:
+            data = json.loads(fixed)
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            continue
+    raise ValueError("JSON 无法修复（长度 %d）" % len(raw))
 
 
 def esc(t):

@@ -27,8 +27,6 @@ cron 08:00
 cloud/
   news_bot.py          云端全流程脚本（Python 3.6+，仅标准库）
   config.example.json  配置模板（复制为 config.json 后填密钥）
-  probe_feeds*.py      新闻源可用性探测工具
-  probe_models.py      大模型可用性与模型列表探测
   setup_cron.sh        注册 /etc/cron.d 定时任务
 weixin/
   publish_draft.py     本地建草稿脚本（支持 --publish 调发布接口）
@@ -38,6 +36,11 @@ news/
   TEMPLATE_V2.html     跨端兼容版式（表格布局 + em 单位，推荐）
 avatars/
   方案1_极简报纸环.png 等 4 款圆形头像
+docs/
+  CREDENTIALS.md       密钥从哪获取、填到哪、报错对照
+  DEPLOY.md            部署与服务器迁移手册
+scripts/
+  setup-git-proxy.sh   新仓库一键写入代理/身份配置
 ```
 
 ## 部署
@@ -68,12 +71,21 @@ cd /opt/daily-news && python3 news_bot.py --force             # 生成并推草�
 用 `<table>` 做兼容布局时，只在 table 上写 `border="0"` 无效，必须给**每个** `td` 的内联样式显式写 `border:none`，否则每条新闻会出现灰框和竖线。
 
 **4. 模型选择**
-- 推理型模型（如 hy4）在 20 条长任务上思考时间超过 3 分钟，容易超时，只作兜底；
-- 首选快而稳的 `deepseek/deepseek-flash`（实测 50 秒完成，JSON 输出稳定）；
-- 脚本内置模型降级链，任一模型失败自动换下一个，全部失败回退到纯 RSS 模式，保证不断更。
+TokenHub 实测（**没有 `hunyuan-lite`，`kimi-k3.1-pro-highspeed` 返回 400，两者都不要配**）：
+
+| 模型 | 实测 | 位置 |
+|---|---|---|
+| `mimo-v2.6-flash` | 快，JSON 稳定 | 首选 |
+| `deepseek/deepseek-flash` | 约 50 秒，偶尔截断（已加容错修复） | 次选 |
+| `glm-5.3` | 可用，稍慢 | 备选 |
+| `hy4` | 推理型，20 条长任务易超时 | 兜底 |
+
+脚本内置 `model_chain` 降级链，任一模型失败自动换下一个；对截断的 JSON 有 `parse_json_loose()` 补齐修复；全部失败回退纯 RSS 模式，保证不断更。
 
 **5. 自动发表做不到（账号资质限制）**
 未认证公众号没有 `freepublish` 权限（返回 `48001`），API 只能到草稿箱，最后一步「发表」需人工点击，或完成微信认证后启用 `--publish`。
+
+更多细节见 [docs/CREDENTIALS.md](docs/CREDENTIALS.md)（密钥获取）与 [docs/DEPLOY.md](docs/DEPLOY.md)（部署迁移）。
 
 ## 在这台机器上推送其他 GitHub 仓库
 
