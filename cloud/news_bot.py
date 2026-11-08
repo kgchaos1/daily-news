@@ -199,7 +199,11 @@ def dedupe(items):
 
 
 def call_llm(cfg, domestic, intl):
-    """用大模型挑选 20 条并生成摘要，返回 {"domestic":[...], "intl":[...]}"""
+    """用大模型挑选 20 条并生成摘要，返回 {"domestic":[...], "intl":[...]}
+
+    稳定性设计：国内/国际分两次请求（单次输出减半），且要求"每行一个 JSON 对象"。
+    这样即使被截断，也只丢最后一行，前面的条目仍可用。
+    """
     llm = cfg.get("llm", {})
     if not llm.get("enabled") or not llm.get("api_key"):
         return None
@@ -210,44 +214,67 @@ def call_llm(cfg, domestic, intl):
             rows.append("%d. %s || %s" % (i + 1, it["title"], it["desc"][:90]))
         return "\n".join(rows)
 
-    prompt = (
-        "你是新闻编辑。下面是今天抓取到的国内与国际新闻候选。\n"
-        "请从国内候选中挑选 12 条、国际候选中挑选 8 条，共 20 条，要求：\n"
-        "1. 优先时政、经济、科技、民生、重大国际事件，避开娱乐八卦与软文广告；\n"
-        "2. 每条输出：改写后的标题（不超过 25 字，客观、不用惊叹号）、2 句话摘要（60-90 字，信息密度高）、来源媒体名；\n"
-        "3. 输出要求（严格遵守）：只输出一个 JSON 对象，不要任何解释、不要编号清单、不要 markdown 代码块，"
-        "第一个字符必须是 { ，最后一个字符必须是 } 。内容必须用简体中文。\n"
-        "   格式：{\"domestic\":[{\"title\":\"\",\"summary\":\"\",\"source\":\"\"}],\"intl\":[{\"title\":\"\",\"summary\":\"\",\"source\":\"\"}]}\n\n"
-        "【国内候选】\n" + brief(domestic) + "\n\n【国际候选】\n" + brief(intl)
-    )
+    def build_prompt(label, pool, need):
+        return (
+            "你是新闻编辑。下面是今天抓取到的%s候选。\n"
+            "请挑选 %d 条，要求：\n"
+            "1. 优先时政、经济、科技、民生%s，避开娱乐八卦与软文广告；\n"
+            "2. 每条改写标题（不超过 25 字，客观、不用惊叹号）与 2 句话摘要（60-90 字，信息密度高）；\n"
+            "3. 输出格式（严格遵守）：一行一个 JSON 对象，共 %d 行，不要数组、不要 markdown 代码块、不要任何解释。\n"
+            "   每行格式：{\"title\":\"标题\",\"summary\":\"摘要\",\"source\":\"来源媒体\"}\n"
+            "   内容必须用简体中文。\n\n"
+            "【%s候选】\n%s" % (label, need, "、重大国际事件" if label == "国际" else "、重大政策",
+                              need, label, brief(pool))
+        )
+
+    def parse_lines(text, need):
+        """逐行解析 NDJSON；兼容模型仍返回数组/整对象的情况"""
+        items = []
+        # 先按行抓，一行可能含多个对象时再用 finditer 兜底
+        for m in re.finditer(r"\{[^{}]*\}", text):
+            try:
+                d = json.loads(m.group(0))
+            except Exception:
+                continue
+            if not isinstance(d, dict):
+                continue
+            t = (d.get("title") or "").strip()
+            s = (d.get("summary") or "").strip()
+            if len(t) < 4 or len(s) < 15:
+                continue
+            items.append({"title": t, "summary": s, "source": (d.get("source") or "").strip()})
+            if len(items) >= need:
+                break
+        return items
+
     def try_model(model_name, base_url, api_key):
-        payload = {
-            "model": model_name,
-            "messages": [
-                {"role": "system", "content": "你是严谨的中文新闻编辑，只输出合法 JSON，不要解释。"},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.3,
-            "max_tokens": 8000,
-        }
         url = base_url.rstrip("/") + "/chat/completions"
-        raw = fetch(url, timeout=180, data=json.dumps(payload).encode("utf-8"),
-                    headers={"Authorization": "Bearer " + api_key,
-                             "Content-Type": "application/json"})
-        msg = json.loads(raw.decode("utf-8"))["choices"][0]["message"]
-        text = (msg.get("content") or "") + "\n" + (msg.get("reasoning_content") or "")
-        m = re.search(r"\{[\s\S]*\}", text)
-        if not m:
-            dbg = "/tmp/llm_raw_%s.txt" % model_name.replace("/", "_")
-            with open(dbg, "w", encoding="utf-8") as df:
-                df.write(text[:6000])
-            raise ValueError("输出中找不到 JSON（已存 %s，开头：%s）"
-                             % (dbg, text[:150].replace("\n", " ")))
-        data = parse_json_loose(m.group(0))
-        if len(data.get("domestic", [])) < 3 or len(data.get("intl", [])) < 2:
-            raise ValueError("返回条目不足（国内 %d / 国际 %d）"
-                             % (len(data.get("domestic", [])), len(data.get("intl", []))))
-        return data
+        out = {}
+        for label, pool, need in (("国内", domestic, 12), ("国际", intl, 8)):
+            payload = {
+                "model": model_name,
+                "messages": [
+                    {"role": "system", "content": "你是严谨的中文新闻编辑，直接输出结果，不要写思考过程、不要自问自答，只按行输出 JSON 对象。"},
+                    {"role": "user", "content": build_prompt(label, pool, need)},
+                ],
+                "temperature": 0.3,
+                # 推理型模型会先输出大段思考内容，预算给小了会把正文挤掉
+                "max_tokens": 8000,
+            }
+            raw = fetch(url, timeout=180, data=json.dumps(payload).encode("utf-8"),
+                        headers={"Authorization": "Bearer " + api_key,
+                                 "Content-Type": "application/json"})
+            msg = json.loads(raw.decode("utf-8"))["choices"][0]["message"]
+            text = (msg.get("content") or "") + "\n" + (msg.get("reasoning_content") or "")
+            items = parse_lines(text, need)
+            if len(items) < 3:
+                dbg = "/tmp/llm_raw_%s_%s.txt" % (model_name.replace("/", "_"), label)
+                with open(dbg, "w", encoding="utf-8") as df:
+                    df.write(text[:6000])
+                raise ValueError("%s条目不足（%d/%d，已存 %s，开头：%s）"
+                                 % (label, len(items), need, dbg, text[:120].replace("\n", " ")))
+            out[label] = items
+        return {"domestic": out["国内"], "intl": out["国际"]}
 
     # 模型优先级：默认按 model_chain 顺序尝试，失败自动降级
     default_url = llm.get("base_url", "")
@@ -286,27 +313,6 @@ def fallback(items, n, source_default):
         out.append({"title": title, "summary": desc,
                     "source": it.get("source") or source_default})
     return out
-
-
-def parse_json_loose(raw):
-    """容错解析：模型输出被截断时，补齐未闭合的括号与引号后再试"""
-    try:
-        return json.loads(raw)
-    except Exception:
-        pass
-    text = raw.rstrip()
-    # 去掉末尾残缺的对象/数组片段
-    for cut in range(len(text), max(len(text) - 400, 0), -1):
-        frag = text[:cut]
-        fixed = frag + ("]" if frag.count("[") > frag.count("]") else "") + ("}" if frag.count("{") > frag.count("}") else "")
-        fixed = fixed.replace(",]", "]").replace(",}", "}")
-        try:
-            data = json.loads(fixed)
-            if isinstance(data, dict):
-                return data
-        except Exception:
-            continue
-    raise ValueError("JSON 无法修复（长度 %d）" % len(raw))
 
 
 def esc(t):
@@ -453,6 +459,8 @@ def render(cfg, date_line, guide, domestic, intl):
     guide_html = "<br>".join("%s %s" % ("①②③④⑤⑥"[i], esc(g)) for i, g in enumerate(guide[:6]))
 
     page = re.sub(r"<!--\s*(DOM|INTL)_ITEM_START\s*-->[\s\S]*?<!--\s*\1_ITEM_END\s*-->", "", tpl)
+    # 再剥掉剩余 HTML 注释：注释里若出现占位符字样，替换会把正文重复塞进去
+    page = re.sub(r"<!--[\s\S]*?-->", "", page)
     page = (page.replace("{{DATE_LINE}}", esc(date_line))
                 .replace("{{GUIDE}}", guide_html)
                 .replace("{{DOMESTIC}}", dom_html)
