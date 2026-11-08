@@ -12,7 +12,7 @@
     "model": "deepseek/deepseek-flash",
     "model_chain": [
       "deepseek/deepseek-flash",
-      "kimi-k3.1-pro-highspeed",
+      "glm-5.3",
       "mimo-v2.6-flash",
       "hy4"
     ]
@@ -20,11 +20,20 @@
   "max_age_hours": 48,
   "feeds": {
     "domestic": [
-      {"name": "中国新闻网", "url": "https://www.chinanews.com.cn/rss/scroll-news.xml"},
-      {"name": "界面新闻", "url": "https://a.jiemian.com/index.php?m=article&a=rss"}
+      {
+        "name": "中国新闻网",
+        "url": "https://www.chinanews.com.cn/rss/scroll-news.xml"
+      },
+      {
+        "name": "界面新闻",
+        "url": "https://a.jiemian.com/index.php?m=article&a=rss"
+      }
     ],
     "intl": [
-      {"name": "中国新闻网", "url": "https://www.chinanews.com.cn/rss/world.xml"}
+      {
+        "name": "中国新闻网",
+        "url": "https://www.chinanews.com.cn/rss/world.xml"
+      }
     ]
   }
 }

@@ -215,7 +215,9 @@ def call_llm(cfg, domestic, intl):
         "请从国内候选中挑选 12 条、国际候选中挑选 8 条，共 20 条，要求：\n"
         "1. 优先时政、经济、科技、民生、重大国际事件，避开娱乐八卦与软文广告；\n"
         "2. 每条输出：改写后的标题（不超过 25 字，客观、不用惊叹号）、2 句话摘要（60-90 字，信息密度高）、来源媒体名；\n"
-        "3. 只输出 JSON，格式：{\"domestic\":[{\"title\":\"\",\"summary\":\"\",\"source\":\"\"}],\"intl\":[...]}\n\n"
+        "3. 输出要求（严格遵守）：只输出一个 JSON 对象，不要任何解释、不要编号清单、不要 markdown 代码块，"
+        "第一个字符必须是 { ，最后一个字符必须是 } 。内容必须用简体中文。\n"
+        "   格式：{\"domestic\":[{\"title\":\"\",\"summary\":\"\",\"source\":\"\"}],\"intl\":[{\"title\":\"\",\"summary\":\"\",\"source\":\"\"}]}\n\n"
         "【国内候选】\n" + brief(domestic) + "\n\n【国际候选】\n" + brief(intl)
     )
     def try_model(model_name, base_url, api_key):
@@ -242,7 +244,7 @@ def call_llm(cfg, domestic, intl):
             raise ValueError("输出中找不到 JSON（已存 %s，开头：%s）"
                              % (dbg, text[:150].replace("\n", " ")))
         data = parse_json_loose(m.group(0))
-        if len(data.get("domestic", [])) < 6 or len(data.get("intl", [])) < 4:
+        if len(data.get("domestic", [])) < 3 or len(data.get("intl", [])) < 2:
             raise ValueError("返回条目不足（国内 %d / 国际 %d）"
                              % (len(data.get("domestic", [])), len(data.get("intl", []))))
         return data
@@ -309,6 +311,23 @@ def parse_json_loose(raw):
 
 def esc(t):
     return (t or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def merge_fill(picked, pool, need, default_source):
+    """模型给出的条目不足时，用 RSS 兜底条目补齐到 need 条"""
+    out = list(picked)[:need]
+    seen = set(re.sub(r"[^\u4e00-\u9fa5A-Za-z0-9]", "", d["title"])[:10] for d in out)
+    if len(out) >= need:
+        return out
+    for item in fallback(pool, need * 3, default_source):
+        if len(out) >= need:
+            break
+        key = re.sub(r"[^\u4e00-\u9fa5A-Za-z0-9]", "", item["title"])[:10]
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(item)
+    return out
 
 
 def render(date_str, weekday, issue, guide, domestic, intl):
@@ -462,8 +481,8 @@ def main():
 
     picked = call_llm(cfg, domestic, intl)
     if picked:
-        dom = picked["domestic"][:12]
-        itl = picked["intl"][:8]
+        dom = merge_fill(picked["domestic"], domestic, 12, "综合报道")
+        itl = merge_fill(picked["intl"], intl, 8, "综合报道")
         guide = [d["title"] for d in (dom[:4] + itl[:2])]
         log("使用大模型生成内容（国内 %d / 国际 %d）" % (len(dom), len(itl)))
     else:
