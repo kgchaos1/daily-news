@@ -75,9 +75,24 @@ cd /opt/daily-news && python3 news_bot.py --force             # 生成并推草�
 **5. 自动发表做不到（账号资质限制）**
 未认证公众号没有 `freepublish` 权限（返回 `48001`），API 只能到草稿箱，最后一步「发表」需人工点击，或完成微信认证后启用 `--publish`。
 
+## 在这台机器上推送其他 GitHub 仓库
+
+本机 GitHub 直连超时，系统代理对 Git 不生效，需在**每个仓库**写入下面 5 条仓库级配置（不污染全局）：
+
+```bash
+git config user.name "kgchaos1"
+git config user.email "kgchaos1@users.noreply.github.com"
+git config http.proxy "http://127.0.0.1:7897"
+git config https.proxy "http://127.0.0.1:7897"
+git config http.sslBackend schannel   # 不加会 OpenSSL 握手失败
+```
+
+或直接用脚本：`cd <仓库根目录> && bash scripts/setup-git-proxy.sh`
+
 ## 安全
 
 - `config.json` 含 AppSecret 与 API Key，已在 `.gitignore` 中排除，仓库只保留 `config.example.json`；
+- 提交身份固定为 `kgchaos1 <kgchaos1@users.noreply.github.com>`，仅写入仓库级配置，不使用任何公司邮箱；
 - 服务器建议改用 SSH 密钥登录并关闭密码登录。
 
 ## 版本
